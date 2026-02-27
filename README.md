@@ -156,5 +156,6 @@ Tachi handles deduplication automatically — re-importing the same scores will 
 
 ## Known Limitations
 
+- **No `percentGraph` or `lifeGraph`**: those values are not present in the export json.
 - The Standard vs. DX chart distinction relies on a `musicId` threshold heuristic (< 10000 = Standard, >= 10000 = DX). If Tachi rejects specific scores, you may need to manually adjust the difficulty for those songs.
 - The `best` mode derives lamp status from `comboStatus` alone (numeric 0–4), which is less precise than the `playlog` mode that uses multiple boolean flags and judgement counts.
