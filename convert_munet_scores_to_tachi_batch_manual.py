@@ -26,17 +26,11 @@ def get_lamp(entry):
     is_clear = entry.get("isClear", False)
 
     if is_ap:
-        non_crit = sum(
+        non_crit_break = sum(
             entry.get(k, 0)
-            for k in [
-                "tapPerfect", "tapGreat", "tapGood", "tapMiss",
-                "holdPerfect", "holdGreat", "holdGood", "holdMiss",
-                "slidePerfect", "slideGreat", "slideGood", "slideMiss",
-                "touchPerfect", "touchGreat", "touchGood", "touchMiss",
-                "breakPerfect", "breakGreat", "breakGood", "breakMiss",
-            ]
+            for k in ["breakPerfect", "breakGreat", "breakGood", "breakMiss"]
         )
-        return "ALL PERFECT+" if non_crit == 0 else "ALL PERFECT"
+        return "ALL PERFECT+" if non_crit_break == 0 else "ALL PERFECT"
 
     if combo >= 2:
         return "FULL COMBO+"

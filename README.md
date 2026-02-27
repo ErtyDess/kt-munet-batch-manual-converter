@@ -68,7 +68,7 @@ Determined from multiple MuNET fields with the following priority:
 
 | Condition | Tachi Lamp |
 |-----------|------------|
-| `isAllPerfect` = true, all judgements are Critical Perfect | ALL PERFECT+ |
+| `isAllPerfect` = true and all Break judgements are Critical Perfect | ALL PERFECT+ |
 | `isAllPerfect` = true | ALL PERFECT |
 | `comboStatus` >= 2 | FULL COMBO+ |
 | `comboStatus` >= 1 or `isFullCombo` = true | FULL COMBO |
