@@ -1,6 +1,6 @@
 import json
 import sys
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 
 DIFFICULTY_STD = {0: "Basic", 1: "Advanced", 2: "Expert", 3: "Master", 4: "Re:Master"}
 DIFFICULTY_DX = {0: "DX Basic", 1: "DX Advanced", 2: "DX Expert", 3: "DX Master", 4: "DX Re:Master"}
@@ -49,12 +49,32 @@ def sum_judgement(entry, suffix):
 
 
 def parse_play_date(date_str):
+    """Parse MuNET play date and convert to UNIX ms in UTC.
+
+    Based on empirical comparison between MuNET exports and real play times
+    (e.g. the Excalibur example), `userPlayDate` behaves as:
+      1) A local timestamp in Chinese Standard Time (UTC+8)
+      2) Internally shifted ~10 hours ahead of the real play time
+    So we:
+      - interpret it as CST (UTC+8),
+      - convert to UTC,
+      - then subtract 10 hours to recover the actual UTC play time.
+    """
     if not date_str:
         return None
     for fmt in ("%Y-%m-%d %H:%M:%S.%f", "%Y-%m-%d %H:%M:%S"):
         try:
-            dt = datetime.strptime(date_str, fmt)
-            return int(dt.timestamp() * 1000)
+            # Parse as naive local time in MuNET's server timezone (UTC+8).
+            dt_naive = datetime.strptime(date_str, fmt)
+            server_tz = timezone(timedelta(hours=8))
+            dt_server = dt_naive.replace(tzinfo=server_tz)
+
+            # Convert to UTC, then apply the fixed -10 hour correction
+            # so that the final timestamp matches the real play moment.
+            dt_utc = dt_server.astimezone(timezone.utc)
+            dt_corrected_utc = dt_utc - timedelta(hours=10)
+
+            return int(dt_corrected_utc.timestamp() * 1000)
         except ValueError:
             continue
     return None
