@@ -29,7 +29,7 @@ The output file will be named `mai2_munet_tachi_import_<today's date>.json`.
 ### Option 2: Direct Python command
 
 ```bash
-python convert_munet_scores_to_tachi_batch_manual.py <input.json> [output.json] [playlog|best]
+python convert_munet_scores_to_tachi_batch_manual.py <input.json> [output.json]
 ```
 
 **Arguments:**
@@ -38,11 +38,8 @@ python convert_munet_scores_to_tachi_batch_manual.py <input.json> [output.json] 
 |----------|----------|---------|-------------|
 | `input.json` | Yes | — | Path to the MuNET export JSON file |
 | `output.json` | No | `tachi_import.json` | Path for the output file |
-| `playlog\|best` | No | `playlog` | Data source to use (see below) |
 
-## Data Sources
-
-### `playlog` (default, recommended)
+## Data Source
 
 Reads from `userPlaylogList` in the MuNET export. Each entry is an individual play session and includes:
 
@@ -51,10 +48,6 @@ Reads from `userPlaylogList` in the MuNET export. Each entry is an individual pl
 - Timestamp
 - Full judgement breakdown (pcrit, perfect, great, good, miss)
 - Fast/slow counts and max combo
-
-### `best`
-
-Reads from `userMusicDetailList`. Contains only the best score per chart. Less detailed — no timestamps, no individual judgements. Use this as a fallback if `userPlaylogList` is empty or unavailable.
 
 ## Field Mapping
 
@@ -158,4 +151,3 @@ Tachi handles deduplication automatically — re-importing the same scores will 
 
 - **No `percentGraph` or `lifeGraph`**: those values are not present in the export json.
 - The Standard vs. DX chart distinction relies on a `musicId` threshold heuristic (< 10000 = Standard, >= 10000 = DX). If Tachi rejects specific scores, you may need to manually adjust the difficulty for those songs.
-- The `best` mode derives lamp status from `comboStatus` alone (numeric 0–4), which is less precise than the `playlog` mode that uses multiple boolean flags and judgement counts.

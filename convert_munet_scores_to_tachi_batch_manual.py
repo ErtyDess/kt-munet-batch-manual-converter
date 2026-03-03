@@ -98,57 +98,24 @@ def convert_playlog_entry(entry):
     return score
 
 
-def convert_best_score(detail):
-    """Fallback: convert from userMusicDetailList (no timestamps/judgements)."""
-    music_id = detail["musicId"]
-    level = detail["level"]
-    achievement = detail["achievement"]
-    combo = detail.get("comboStatus", 0)
-
-    if combo >= 4:
-        lamp = "ALL PERFECT+"
-    elif combo >= 3:
-        lamp = "ALL PERFECT"
-    elif combo >= 2:
-        lamp = "FULL COMBO+"
-    elif combo >= 1:
-        lamp = "FULL COMBO"
-    elif achievement > 0:
-        lamp = "CLEAR"
-    else:
-        lamp = "FAILED"
-
-    return {
-        "percent": achievement / 10000.0,
-        "lamp": lamp,
-        "matchType": "inGameID",
-        "identifier": str(music_id),
-        "difficulty": get_difficulty(music_id, level),
-    }
-
-
 def main():
     input_file = sys.argv[1] if len(sys.argv) > 1 else None
     output_file = sys.argv[2] if len(sys.argv) > 2 else "tachi_import.json"
-    source = sys.argv[3] if len(sys.argv) > 3 else "playlog"
 
     if not input_file:
-        print("Usage: python convert.py <munet_export.json> [output.json] [playlog|best]")
-        print("  playlog  - convert every individual play (default, recommended)")
-        print("  best     - convert only best scores per chart (no timestamps)")
+        print(
+            "Usage: python convert_munet_scores_to_tachi_batch_manual.py "
+            "<munet_export.json> [output.json]"
+        )
+        print("  Converts every individual play from userPlaylogList (recommended)")
         sys.exit(1)
 
     with open(input_file, "r", encoding="utf-8") as f:
         data = json.load(f)
 
-    if source == "best":
-        details = data.get("userMusicDetailList", [])
-        scores = [convert_best_score(d) for d in details if d.get("achievement", 0) > 0]
-        print(f"Converted {len(scores)} best scores from userMusicDetailList")
-    else:
-        playlogs = data.get("userPlaylogList", [])
-        scores = [convert_playlog_entry(p) for p in playlogs]
-        print(f"Converted {len(scores)} plays from userPlaylogList")
+    playlogs = data.get("userPlaylogList", [])
+    scores = [convert_playlog_entry(p) for p in playlogs]
+    print(f"Converted {len(scores)} plays from userPlaylogList")
 
     batch_manual = {
         "meta": {
