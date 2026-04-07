@@ -12,4 +12,4 @@ if (-not $inputFile) {
 Write-Host "Input:  $inputFile"
 Write-Host "Output: $outputFile"
 
-& $pyPath $script $inputFile $outputFile playlog
+& $pyPath $script $inputFile $outputFile

@@ -1,10 +1,18 @@
 # MuNET to Tachi BATCH-MANUAL Converter
 
-Converts maimai DX score exports from **MuNET** (private server) into the **BATCH-MANUAL** JSON format used by [Kamaitachi] for score imports.
+Converts washing machine arcade game score exports from **MuNET** (private server) into the **BATCH-MANUAL** JSON format used by [Kamaitachi] for score imports.
 
 ## Requirements
 
 - Python 3.10+
+
+## Tutorial
+
+1. **Export your MuNET profile**: go to the MuNET web panel → **maimai DX** tab → **Data import / export** tab → In the Export section click **All data JSON**. A file named `MuNET Export - <username> - <date>.json` will be downloaded.
+2. **Download this repository**: click the green **Code** button on GitHub → **Download ZIP**, then extract the archive.
+3. **Place the export in the script folder**: move the `MuNET Export - ....json` file from step 1 into the same folder as `run_convert.ps1` and the Python script.
+4. **Run the converter**: right-click `run_convert.ps1` → **Run with PowerShell**. The output file `mai2_tachi_batch_manual_import_munet_<date>.json` will appear in the same folder.
+5. **Import into Kamaitachi**: go to [Kamaitachi] → **Import Scores** → **BATCH-MANUAL** (or navigate directly to `/import/batch-manual`) and upload the output file from step 4.
 
 ## Files
 
@@ -15,16 +23,12 @@ Converts maimai DX score exports from **MuNET** (private server) into the **BATC
 
 ## Usage
 
-### Option 1: PowerShell helper (Windows)
+### Option 1: PowerShell helper (Windows, recommended)
 
 1. Place your MuNET export JSON in the same folder as the scripts.
-2. Run:
+2. Right-click `run_convert.ps1` → **Run with PowerShell**.
 
-```powershell
-.\run_convert.ps1
-```
-
-The output file will be named `mai2_munet_tachi_import_<today's date>.json`.
+The output file will be named `mai2_tachi_batch_manual_import_munet_<date>.json`.
 
 ### Option 2: Direct Python command
 
@@ -97,11 +101,21 @@ Aggregated from all note types (tap, hold, slide, touch, break) for each judgeme
 | `slow` | `lateCount` |
 | `maxCombo` | `maxCombo` |
 
-Only included if the value is greater than 0.
+Included whenever the source field exists in MuNET, even when the value is `0`.
 
 ### Timestamp
 
-MuNET's `userPlayDate` (e.g. `"2025-11-17 04:56:21.0"`) is converted to Unix milliseconds for Tachi's `timeAchieved`.
+MuNET stores two time fields per play:
+
+- **`loginDate`** — Unix timestamp (seconds, UTC). Accurate but identical for every song in the same credit.
+- **`userPlayDate`** — Datetime string. Shifted by a server-side offset that varies across server versions (e.g. +18 h or +9 h), but the relative deltas between songs within a session are correct.
+
+The converter combines both to produce per-song completion timestamps:
+
+1. For each session (`loginDate` group), it finds the earliest `userPlayDate`.
+2. The raw offset `earliest_userPlayDate − loginDate` contains the server shift plus a small variable login-to-first-song gap.
+3. Because the server shift is always an exact number of hours and the login-to-song gap is always under 30 minutes, rounding to the nearest hour isolates the server shift exactly.
+4. Each song's `timeAchieved` is then `userPlayDate − rounded_offset`, converted to milliseconds.
 
 ## Output Format
 
@@ -139,15 +153,9 @@ The output follows the [Tachi BATCH-MANUAL specification](https://docs.tachi.ac/
 }
 ```
 
-## Importing into Kamaitachi
-
-1. Run the converter to generate the output JSON.
-2. Go to [Kamaitachi] → Import Scores → BATCH-MANUAL.
-3. Upload the generated JSON file.
-
 Tachi handles deduplication automatically — re-importing the same scores will not create duplicates.
 
 ## Known Limitations
 
 - **No `percentGraph` or `lifeGraph`**: those values are not present in the export json.
-- The Standard vs. DX chart distinction relies on a `musicId` threshold heuristic (< 10000 = Standard, >= 10000 = DX). If Tachi rejects specific scores, you may need to manually adjust the difficulty for those songs.
+- **Timestamp accuracy**: `timeAchieved` may be off by a few minutes compared to the real completion time, due to the hour-rounding heuristic used to correct MuNET's server-side time offset.
