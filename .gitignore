@@ -1,0 +1,10 @@
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Output del converter
+mai2_tachi_batch_manual_import_munet_*.json
+tachi_import.json
+
+# Export MuNET (dati personali)
+MuNET Export*.json

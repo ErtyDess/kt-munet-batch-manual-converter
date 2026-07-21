@@ -14,12 +14,14 @@ Converts washing machine arcade game score exports from **MuNET** (private serve
 4. **Run the converter**: right-click `run_convert.ps1` → **Run with PowerShell**. The output file `mai2_tachi_batch_manual_import_munet_<date>.json` will appear in the same folder.
 5. **Import into Kamaitachi**: go to [Kamaitachi] → **Import Scores** → **BATCH-MANUAL** (or navigate directly to `/import/batch-manual`) and upload the output file from step 4.
 
+> **Tip:** you can skip the manual upload in step 5 and let the tool send the scores to Tachi for you — see [Direct upload to Tachi](#direct-upload-to-tachi-optional).
+
 ## Files
 
 | File | Description |
 |------|-------------|
-| `convert_munet_scores_to_tachi_batch_manual.py` | Main converter script |
-| `run_convert.ps1` | PowerShell helper that auto-detects the input file and runs the converter |
+| `convert_munet_scores_to_tachi_batch_manual.py` | Main converter script (also supports optional direct upload to Tachi) |
+| `run_convert.ps1` | PowerShell helper that auto-detects the input file, runs the converter, and can optionally upload (`-Upload`) |
 
 ## Usage
 
@@ -29,6 +31,14 @@ Converts washing machine arcade game score exports from **MuNET** (private serve
 2. Right-click `run_convert.ps1` → **Run with PowerShell**.
 
 The output file will be named `mai2_tachi_batch_manual_import_munet_<date>.json`.
+
+The helper accepts optional parameters:
+
+| Parameter | Description |
+|-----------|-------------|
+| `-Upload` | Upload the result to Tachi after conversion |
+| `-ApiKey <key>` | Tachi API key (defaults to the `TACHI_API_KEY` environment variable) |
+| `-BaseUrl <url>` | Tachi base URL (default `https://kamai.tachi.ac`) |
 
 ### Option 2: Direct Python command
 
@@ -42,6 +52,37 @@ python convert_munet_scores_to_tachi_batch_manual.py <input.json> [output.json]
 |----------|----------|---------|-------------|
 | `input.json` | Yes | — | Path to the MuNET export JSON file |
 | `output.json` | No | `tachi_import.json` | Path for the output file |
+| `--upload` | No | off | After conversion, upload the result directly to Tachi |
+| `--api-key` | No | `$TACHI_API_KEY` | Tachi API key (required with `--upload`) |
+| `--base-url` | No | `https://kamai.tachi.ac` | Tachi base URL |
+
+## Direct upload to Tachi (optional)
+
+By default the tool only writes the JSON file, which you then upload manually via
+**Import Scores → BATCH-MANUAL**. Alternatively you can let the tool POST the
+result straight to Tachi's `/ir/direct-manual/import` endpoint (same endpoint the
+[Rizu](Rizu/README.md) score hook uses), handling both synchronous (`200`) and
+async (`202` + polling) responses. The output file is always written first, so a
+failed upload never loses data.
+
+Generate an API key at **Tachi → Profile → Integrations → API Keys** (needs the
+`Submit Scores` permission), then:
+
+```bash
+# via environment variable (recommended)
+export TACHI_API_KEY="your-key"          # PowerShell: $env:TACHI_API_KEY="your-key"
+python convert_munet_scores_to_tachi_batch_manual.py input.json --upload
+
+# or pass it explicitly
+python convert_munet_scores_to_tachi_batch_manual.py input.json --upload --api-key your-key
+```
+
+With the PowerShell helper:
+
+```powershell
+# set $env:TACHI_API_KEY first, or pass -ApiKey
+.\run_convert.ps1 -Upload
+```
 
 ## Data Source
 
@@ -113,9 +154,9 @@ MuNET stores two time fields per play:
 The converter combines both to produce per-song completion timestamps:
 
 1. For each session (`loginDate` group), it finds the earliest `userPlayDate`.
-2. The raw offset `earliest_userPlayDate − loginDate` contains the server shift plus a small variable login-to-first-song gap.
-3. Because the server shift is always an exact number of hours and the login-to-song gap is always under 30 minutes, rounding to the nearest hour isolates the server shift exactly.
-4. Each song's `timeAchieved` is then `userPlayDate − rounded_offset`, converted to milliseconds.
+2. The raw offset `earliest_userPlayDate − loginDate` contains the server shift plus a small, always-positive login-to-first-song gap.
+3. Because the server shift is always an exact number of hours and the login-to-song gap is always under one hour, **flooring** the raw offset to the hour isolates the server shift exactly. (Flooring tolerates gaps up to ~59 min; the previous nearest-hour rounding broke whenever the gap exceeded 30 min, shifting a whole session by an hour.)
+4. Each song's `timeAchieved` is then `userPlayDate − floored_offset`, converted to milliseconds.
 
 ## Output Format
 
@@ -158,4 +199,4 @@ Tachi handles deduplication automatically — re-importing the same scores will 
 ## Known Limitations
 
 - **No `percentGraph` or `lifeGraph`**: those values are not present in the export json.
-- **Timestamp accuracy**: `timeAchieved` may be off by a few minutes compared to the real completion time, due to the hour-rounding heuristic used to correct MuNET's server-side time offset.
+- **Timestamp accuracy**: `timeAchieved` may be off by a few minutes compared to the real completion time, due to the hour-flooring heuristic used to correct MuNET's server-side time offset. The offset is recovered per session, so timezone/DST changes between sessions are handled correctly.
