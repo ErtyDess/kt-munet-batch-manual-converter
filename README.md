@@ -8,7 +8,11 @@ Converts washing machine arcade game score exports from **MuNET** (private serve
 
 ## Tutorial
 
-1. **Export your MuNET profile**: go to the MuNET web panel → **maimai DX** tab → **Data import / export** tab → In the Export section click **All data JSON**. A file named `MuNET Export - <username> - <date>.json` will be downloaded.
+1. **Export your MuNET profile**: go to the MuNET web panel → **maimai DX** tab → **Data import / export** tab → In the Export section click either:
+   - **All Data JSON** (current / non-legacy format), or
+   - **Legacy → All Data JSON**
+   
+   Both formats are supported by this converter. A file named `MuNET Export - <username> - <date>.json` will be downloaded.
 2. **Download this repository**: click the green **Code** button on GitHub → **Download ZIP**, then extract the archive.
 3. **Place the export in the script folder**: move the `MuNET Export - ....json` file from step 1 into the same folder as `run_convert.ps1` and the Python script.
 4. **Run the converter**: right-click `run_convert.ps1` → **Run with PowerShell**. The output file `mai2_tachi_batch_manual_import_munet_<date>.json` will appear in the same folder.
@@ -86,7 +90,7 @@ With the PowerShell helper:
 
 ## Data Source
 
-Reads from `userPlaylogList` in the MuNET export. Each entry is an individual play session and includes:
+Reads from `userPlaylogList` in the MuNET export (both current and Legacy All Data JSON). Each entry is an individual play and includes:
 
 - Achievement percentage
 - Lamp status (FAILED, CLEAR, FULL COMBO, FULL COMBO+, ALL PERFECT, ALL PERFECT+)
@@ -106,12 +110,14 @@ Determined from multiple MuNET fields with the following priority:
 
 | Condition | Tachi Lamp |
 |-----------|------------|
-| `isAllPerfect` = true and all Break judgements are Critical Perfect | ALL PERFECT+ |
-| `isAllPerfect` = true | ALL PERFECT |
+| `isAllPerfect` = true (legacy export), **or** judgements show zero great/good/miss, and all Break judgements are Critical Perfect | ALL PERFECT+ |
+| Same AP condition, but some Break notes are not Critical Perfect | ALL PERFECT |
 | `comboStatus` >= 2 | FULL COMBO+ |
 | `comboStatus` >= 1 or `isFullCombo` = true | FULL COMBO |
 | `isClear` = true | CLEAR |
 | Otherwise | FAILED |
+
+Newer (non-legacy) MuNET exports omit `isAllPerfect` / `isFullCombo`; the converter infers AP/AP+ from judgements so both formats stay aligned.
 
 ### Difficulty
 
@@ -121,6 +127,8 @@ Uses a heuristic based on `musicId`:
 - IDs **>= 10000** → DX charts: DX Basic, DX Advanced, DX Expert, DX Master, DX Re:Master
 
 The numeric `level` field (0–4) maps to the difficulty name within each category.
+
+**Utage** charts use `level == 10` in MuNET/SEGA data. Tachi does not support Utage difficulties, so those plays are **skipped** with a console warning.
 
 ### Judgements
 
@@ -149,14 +157,22 @@ Included whenever the source field exists in MuNET, even when the value is `0`.
 MuNET stores two time fields per play:
 
 - **`loginDate`** — Unix timestamp (seconds, UTC). Accurate but identical for every song in the same credit.
-- **`userPlayDate`** — Datetime string. Shifted by a server-side offset that varies across server versions (e.g. +18 h or +9 h), but the relative deltas between songs within a session are correct.
+- **`userPlayDate`** — Datetime string. Legacy exports use `YYYY-MM-DD HH:MM:SS[.f]`; newer exports use ISO-8601 (often with a trailing `Z`). **The `Z` does not mean true UTC** — the value is still shifted by a server-side offset (e.g. +9 h or +18 h) relative to `loginDate`. Relative deltas between songs within a session remain correct.
 
-The converter combines both to produce per-song completion timestamps:
+The converter parses both string formats and combines them to produce per-song completion timestamps:
 
 1. For each session (`loginDate` group), it finds the earliest `userPlayDate`.
 2. The raw offset `earliest_userPlayDate − loginDate` contains the server shift plus a small, always-positive login-to-first-song gap.
 3. Because the server shift is always an exact number of hours and the login-to-song gap is always under one hour, **flooring** the raw offset to the hour isolates the server shift exactly. (Flooring tolerates gaps up to ~59 min; the previous nearest-hour rounding broke whenever the gap exceeded 30 min, shifting a whole session by an hour.)
 4. Each song's `timeAchieved` is then `userPlayDate − floored_offset`, converted to milliseconds.
+
+## Skipped scores
+
+Before writing output, the converter drops plays that Tachi would reject, and prints a summary:
+
+- **Utage** (`level == 10`) — not in Tachi's maimai DX difficulty list
+- **Lamp / percent mismatches** aligned with Tachi validators (e.g. ALL PERFECT+ without exactly 101%, CLEAR below 80%, FAILED at/above 80%)
+- **Judgement / maxCombo inconsistencies** when those fields are present (same rules as Tachi's `maimaidx` score validators)
 
 ## Output Format
 
@@ -199,4 +215,5 @@ Tachi handles deduplication automatically — re-importing the same scores will 
 ## Known Limitations
 
 - **No `percentGraph` or `lifeGraph`**: those values are not present in the export json.
-- **Timestamp accuracy**: `timeAchieved` may be off by a few minutes compared to the real completion time, due to the hour-flooring heuristic used to correct MuNET's server-side time offset. The offset is recovered per session, so timezone/DST changes between sessions are handled correctly.
+- **Utage scores are not imported**: Tachi does not model Utage difficulties.
+- **Timestamp accuracy**: `timeAchieved` may be off by a few minutes compared to the real completion time, due to the hour-flooring heuristic used to correct MuNET's server-side time offset. The offset is recovered per session, so timezone/DST changes between sessions are handled correctly. The newer ISO export does **not** remove the need for this correction.

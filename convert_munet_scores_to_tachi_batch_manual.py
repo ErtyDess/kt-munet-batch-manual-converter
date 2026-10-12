@@ -4,6 +4,7 @@ import time
 import argparse
 import urllib.request
 import urllib.error
+from collections import Counter
 from datetime import datetime, timezone
 
 USER_AGENT = "kt-munet-batch-manual-converter/1.0"
@@ -21,10 +22,27 @@ DIFFICULTY_DX = {0: "DX Basic", 1: "DX Advanced", 2: "DX Expert", 3: "DX Master"
 # If Tachi rejects some scores, you may need to flip specific IDs manually.
 DX_THRESHOLD = 10000
 
+# SEGA musicDifficulty / MuNET level for Utage charts. Tachi has no Utage difficulty.
+UTAGE_LEVEL = 10
+
 
 def get_difficulty(music_id, level):
     table = DIFFICULTY_DX if music_id >= DX_THRESHOLD else DIFFICULTY_STD
     return table.get(level, f"Unknown({level})")
+
+
+def sum_judgement(entry, suffix):
+    return sum(
+        entry.get(f"{note_type}{suffix}", 0)
+        for note_type in ["tap", "hold", "slide", "touch", "break"]
+    )
+
+
+def non_crit_break_count(entry):
+    return sum(
+        entry.get(k, 0)
+        for k in ["breakPerfect", "breakGreat", "breakGood", "breakMiss"]
+    )
 
 
 def get_lamp(entry):
@@ -33,12 +51,16 @@ def get_lamp(entry):
     is_fc = entry.get("isFullCombo", False)
     is_clear = entry.get("isClear", False)
 
-    if is_ap:
-        non_crit_break = sum(
-            entry.get(k, 0)
-            for k in ["breakPerfect", "breakGreat", "breakGood", "breakMiss"]
-        )
-        return "ALL PERFECT+" if non_crit_break == 0 else "ALL PERFECT"
+    # New MuNET exports omit isAllPerfect; infer AP from judgements.
+    great = sum_judgement(entry, "Great")
+    good = sum_judgement(entry, "Good")
+    miss = sum_judgement(entry, "Miss")
+    judgement_ap = (great + good + miss) == 0 and (
+        sum_judgement(entry, "CriticalPerfect") + sum_judgement(entry, "Perfect") > 0
+    )
+
+    if is_ap or judgement_ap:
+        return "ALL PERFECT+" if non_crit_break_count(entry) == 0 else "ALL PERFECT"
 
     if combo >= 2:
         return "FULL COMBO+"
@@ -49,17 +71,25 @@ def get_lamp(entry):
     return "FAILED"
 
 
-def sum_judgement(entry, suffix):
-    return sum(
-        entry.get(f"{note_type}{suffix}", 0)
-        for note_type in ["tap", "hold", "slide", "touch", "break"]
-    )
-
-
 def parse_user_play_date(date_str):
-    """Parse userPlayDate string to unix seconds (treating it as naive UTC)."""
+    """Parse userPlayDate to unix seconds.
+
+    Legacy MuNET uses 'YYYY-MM-DD HH:MM:SS[.f]'. Newer exports use ISO-8601
+    (often with a trailing Z). The Z does NOT mean true UTC — userPlayDate is
+    still shifted by a server-side offset relative to loginDate — so we only
+    need to parse the string; build_session_offsets recovers the shift.
+    """
     if not date_str:
         return None
+    if isinstance(date_str, str) and "T" in date_str:
+        try:
+            iso = date_str.replace("Z", "+00:00") if date_str.endswith("Z") else date_str
+            dt = datetime.fromisoformat(iso)
+            if dt.tzinfo is None:
+                dt = dt.replace(tzinfo=timezone.utc)
+            return int(dt.timestamp())
+        except ValueError:
+            pass
     for fmt in ("%Y-%m-%d %H:%M:%S.%f", "%Y-%m-%d %H:%M:%S"):
         try:
             dt = datetime.strptime(date_str, fmt).replace(tzinfo=timezone.utc)
@@ -114,17 +144,75 @@ def get_time_achieved(entry, session_offsets):
     return login * 1000
 
 
+def tachi_reject_reason(score):
+    """Return a skip reason if this score would fail Tachi maimaidx validators.
+
+    Mirrors typescript/server/src/game-implementations/games/maimaidx.ts.
+    """
+    percent = score["percent"]
+    lamp = score["lamp"]
+    judgements = score.get("judgements") or {}
+    optional = score.get("optional") or {}
+
+    if lamp == "ALL PERFECT+" and percent != 101:
+        return f"ALL PERFECT+ requires 101% (got {percent})"
+    if lamp != "ALL PERFECT+" and percent == 101:
+        return f"101% must be ALL PERFECT+ (got lamp={lamp})"
+    if lamp == "ALL PERFECT" and percent < 100.5:
+        return f"ALL PERFECT requires >= 100.5% (got {percent})"
+    if lamp == "CLEAR" and percent < 80:
+        return f"CLEAR requires >= 80% (got {percent})"
+    if lamp == "FAILED" and percent >= 80:
+        return f"FAILED requires < 80% (got {percent})"
+
+    great = judgements.get("great")
+    good = judgements.get("good")
+    miss = judgements.get("miss")
+    if great is not None and good is not None and miss is not None:
+        if lamp in ("ALL PERFECT+", "ALL PERFECT") and great + good + miss > 0:
+            return f"{lamp} with non-perfect judgements"
+        if lamp == "FULL COMBO+" and good + miss > 0:
+            return "FULL COMBO+ with goods or misses"
+        if lamp == "FULL COMBO" and miss > 0:
+            return "FULL COMBO with misses"
+
+    max_combo = optional.get("maxCombo")
+    pcrit = judgements.get("pcrit")
+    perfect = judgements.get("perfect")
+    if (
+        max_combo is not None
+        and pcrit is not None
+        and perfect is not None
+        and great is not None
+        and good is not None
+        and miss is not None
+        and lamp not in ("CLEAR", "FAILED")
+        and pcrit + perfect + great + good + miss != max_combo
+    ):
+        return f"{lamp} maxCombo != sum of judgements"
+
+    return None
+
+
 def convert_playlog_entry(entry, session_offsets):
+    """Convert a playlog entry, or return (None, reason) when it should be skipped."""
     music_id = entry["musicId"]
     level = entry["level"]
     achievement = entry["achievement"]
+
+    if level == UTAGE_LEVEL:
+        return None, f"Utage (musicId={music_id}, level=10) — not supported by Tachi"
+
+    difficulty = get_difficulty(music_id, level)
+    if difficulty.startswith("Unknown("):
+        return None, f"unsupported difficulty {difficulty} (musicId={music_id})"
 
     score = {
         "percent": achievement / 10000.0,
         "lamp": get_lamp(entry),
         "matchType": "inGameID",
         "identifier": str(music_id),
-        "difficulty": get_difficulty(music_id, level),
+        "difficulty": difficulty,
     }
 
     ts = get_time_achieved(entry, session_offsets)
@@ -149,7 +237,34 @@ def convert_playlog_entry(entry, session_offsets):
     if optional:
         score["optional"] = optional
 
-    return score
+    reject = tachi_reject_reason(score)
+    if reject:
+        return None, f"musicId={music_id}: {reject}"
+
+    return score, None
+
+
+def _skip_category(reason):
+    if reason.startswith("Utage"):
+        return "Utage (level 10)"
+    if reason.startswith("unsupported difficulty"):
+        return "unsupported difficulty"
+    return "Tachi validator reject"
+
+
+def convert_playlogs(playlogs):
+    session_offsets = build_session_offsets(playlogs)
+    scores = []
+    skip_categories = Counter()
+    skip_details = []
+    for entry in playlogs:
+        score, reason = convert_playlog_entry(entry, session_offsets)
+        if score is None:
+            skip_categories[_skip_category(reason)] += 1
+            skip_details.append(reason)
+            continue
+        scores.append(score)
+    return scores, skip_categories, skip_details
 
 
 def _log_import_result(body):
@@ -280,9 +395,19 @@ def main():
         data = json.load(f)
 
     playlogs = data.get("userPlaylogList", [])
-    session_offsets = build_session_offsets(playlogs)
-    scores = [convert_playlog_entry(p, session_offsets) for p in playlogs]
-    print(f"Converted {len(scores)} plays from userPlaylogList")
+    scores, skip_categories, skip_details = convert_playlogs(playlogs)
+    skipped = sum(skip_categories.values())
+    print(
+        f"Converted {len(scores)} plays from userPlaylogList"
+        + (f" ({skipped} skipped)" if skipped else "")
+    )
+    for category, count in skip_categories.most_common():
+        print(f"  skipped x{count}: {category}")
+    # Cap detail lines so large Utage dumps stay readable.
+    for detail in skip_details[:20]:
+        print(f"    - {detail}")
+    if len(skip_details) > 20:
+        print(f"    ... and {len(skip_details) - 20} more")
 
     batch_manual = {
         "meta": {
