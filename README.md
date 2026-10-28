@@ -1,6 +1,6 @@
 # MuNET → Tachi BATCH-MANUAL
 
-Converts **maimai DX** score exports from **MuNET** into **BATCH-MANUAL** JSON for import on [Kamaitachi](https://kamaitachi.xyz).
+Converts **maimai DX** score exports from **MuNET** into **BATCH-MANUAL** JSON for import on Kamaitachi.
 
 **Online converter:** [https://ertydess.github.io/kt-munet-batch-manual-converter/](https://ertydess.github.io/kt-munet-batch-manual-converter/)
 
@@ -8,7 +8,7 @@ Converts **maimai DX** score exports from **MuNET** into **BATCH-MANUAL** JSON f
 
 1. **Export your MuNET profile** — web panel → **maimai DX** tab → **Data import / export** → in Export pick **All Data JSON** or **Legacy → All Data JSON**. You’ll get something like `MuNET Export - <username> - <date>.json`.
 2. **Convert on the site** — open the [converter](https://ertydess.github.io/kt-munet-batch-manual-converter/), drag or select the file. The converted JSON downloads automatically (everything stays in your browser).
-3. **Import into Kamaitachi** — [Import Scores](https://kamaitachi.xyz) → **BATCH-MANUAL** (or `/import/batch-manual`) and upload the downloaded file.
+3. **Import into Kamaitachi** — Import Scores → **BATCH-MANUAL** (or `/import/batch-manual`) and upload the downloaded file.
 
 ## Notes
 
