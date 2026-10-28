@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="it">
+<html lang="en">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -207,12 +207,12 @@
     <main>
       <h1>MuNET → Tachi BATCH-MANUAL</h1>
       <p class="lead">
-        Converte l’export All Data JSON di MuNET (maimai DX) nel formato
-        BATCH-MANUAL per Kamaitachi.
+        Converts a MuNET All Data JSON export (maimai DX) into BATCH-MANUAL
+        format for Kamaitachi.
       </p>
       <p class="privacy">
-        Il file resta sul tuo computer: la conversione avviene nel browser e
-        non viene inviata da nessuna parte.
+        Your file stays on your computer: conversion runs in the browser and
+        nothing is uploaded.
       </p>
 
       <input type="file" id="fileInput" accept=".json,application/json" />
@@ -221,14 +221,14 @@
         id="dropzone"
         role="button"
         tabindex="0"
-        aria-label="Seleziona o trascina un file JSON MuNET"
+        aria-label="Select or drop a MuNET JSON file"
       >
         <p>
-          <strong>Trascina qui</strong> il file
-          <code>MuNET Export - ….json</code>
+          <strong>Drop</strong> your
+          <code>MuNET Export - ….json</code> here
         </p>
-        <p>oppure</p>
-        <button type="button" class="btn" id="pickBtn">Scegli file</button>
+        <p>or</p>
+        <button type="button" class="btn" id="pickBtn">Choose file</button>
       </div>
 
       <div class="status" id="status" aria-live="polite"></div>
@@ -272,33 +272,33 @@
       function showResult(result, filename) {
         const skipped = result.skipDetails.length;
         const lines = [
-          `Convertite ${result.scores.length} partite` +
-            (skipped ? ` (${skipped} saltate)` : ""),
+          `Converted ${result.scores.length} plays` +
+            (skipped ? ` (${skipped} skipped)` : ""),
         ];
 
-        let html = `<h2>Fatto</h2><p>${lines[0]}.</p>`;
+        let html = `<h2>Done</h2><p>${lines[0]}.</p>`;
 
         if (result.skipCategories.length) {
           html += "<ul>";
           for (const [cat, count] of result.skipCategories) {
-            html += `<li>saltate ×${count}: ${escapeHtml(cat)}</li>`;
+            html += `<li>skipped ×${count}: ${escapeHtml(cat)}</li>`;
           }
           html += "</ul>";
         }
 
         if (skipped) {
           const shown = result.skipDetails.slice(0, 20);
-          html += `<div class="details"><strong>Dettagli:</strong><br />`;
+          html += `<div class="details"><strong>Details:</strong><br />`;
           for (const d of shown) {
             html += `<code>${escapeHtml(d)}</code><br />`;
           }
           if (result.skipDetails.length > 20) {
-            html += `… e altre ${result.skipDetails.length - 20}`;
+            html += `… and ${result.skipDetails.length - 20} more`;
           }
           html += `</div>`;
         }
 
-        html += `<button type="button" class="btn btn-secondary" id="redownload">Scarica di nuovo (${escapeHtml(filename)})</button>`;
+        html += `<button type="button" class="btn btn-secondary" id="redownload">Download again (${escapeHtml(filename)})</button>`;
 
         statusEl.className = "status visible ok";
         statusEl.innerHTML = html;
@@ -318,13 +318,13 @@
       async function handleFile(file) {
         if (!file) return;
         statusEl.className = "status visible";
-        statusEl.textContent = "Conversione in corso…";
+        statusEl.textContent = "Converting…";
 
         let text;
         try {
           text = await file.text();
         } catch {
-          showError("Impossibile leggere il file.");
+          showError("Could not read the file.");
           return;
         }
 
@@ -332,7 +332,7 @@
         try {
           data = JSON.parse(text);
         } catch {
-          showError("Il file non è un JSON valido.");
+          showError("That file is not valid JSON.");
           return;
         }
 
@@ -342,7 +342,7 @@
           !Array.isArray(data.userPlaylogList)
         ) {
           showError(
-            "JSON non riconosciuto: manca userPlaylogList. Usa l’export All Data JSON da MuNET."
+            "Unrecognized JSON: missing userPlaylogList. Use the All Data JSON export from MuNET."
           );
           return;
         }
@@ -354,7 +354,7 @@
           showResult(result, filename);
         } catch (err) {
           console.error(err);
-          showError("Errore durante la conversione. Controlla che il file sia un export MuNET completo.");
+          showError("Conversion failed. Make sure the file is a full MuNET export.");
         }
       }
 
