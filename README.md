@@ -1,25 +1,25 @@
 # MuNET → Tachi BATCH-MANUAL
 
-Converte l’export score di **maimai DX** da **MuNET** nel JSON **BATCH-MANUAL** da importare su [Kamaitachi](https://kamaitachi.xyz).
+Converts **maimai DX** score exports from **MuNET** into **BATCH-MANUAL** JSON for import on [Kamaitachi](https://kamaitachi.xyz).
 
-**Converter online:** [https://ertydess.github.io/kt-munet-batch-manual-converter/](https://ertydess.github.io/kt-munet-batch-manual-converter/)
+**Online converter:** [https://ertydess.github.io/kt-munet-batch-manual-converter/](https://ertydess.github.io/kt-munet-batch-manual-converter/)
 
 ## Tutorial
 
-1. **Esporta il profilo da MuNET** — pannello web → tab **maimai DX** → **Data import / export** → in Export scegli **All Data JSON** oppure **Legacy → All Data JSON**. Si scarica qualcosa tipo `MuNET Export - <username> - <date>.json`.
-2. **Converti sul sito** — apri il [converter](https://ertydess.github.io/kt-munet-batch-manual-converter/), trascina o seleziona il file. Il JSON convertito si scarica da solo (tutto resta nel browser).
-3. **Importa su Kamaitachi** — [Import Scores](https://kamaitachi.xyz) → **BATCH-MANUAL** (o `/import/batch-manual`) e carica il file scaricato.
+1. **Export your MuNET profile** — web panel → **maimai DX** tab → **Data import / export** → in Export pick **All Data JSON** or **Legacy → All Data JSON**. You’ll get something like `MuNET Export - <username> - <date>.json`.
+2. **Convert on the site** — open the [converter](https://ertydess.github.io/kt-munet-batch-manual-converter/), drag or select the file. The converted JSON downloads automatically (everything stays in your browser).
+3. **Import into Kamaitachi** — [Import Scores](https://kamaitachi.xyz) → **BATCH-MANUAL** (or `/import/batch-manual`) and upload the downloaded file.
 
-## Note
+## Notes
 
-- Percentuale = achievement MuNET ÷ 10000 (es. `990758` → `99.0758`)
-- Lamp da flag AP/FC e giudizi (AP+, AP, FC+, FC, CLEAR, FAILED)
-- `musicId` sotto 10000 → difficoltà Standard; da 10000 in su → DX; Utage saltate
-- Timestamp per canzone da `loginDate` + `userPlayDate` (con correzione dell’offset orario del server)
-- Le partite che Tachi rifiuterebbe vengono scartate, con un riepilogo a schermo
+- Percent = MuNET achievement ÷ 10000 (e.g. `990758` → `99.0758`)
+- Lamp from AP/FC flags and judgements (AP+, AP, FC+, FC, CLEAR, FAILED)
+- `musicId` under 10000 → Standard difficulties; 10000+ → DX; Utage skipped
+- Per-song timestamps from `loginDate` + `userPlayDate` (with MuNET’s hour-level server offset corrected)
+- Plays Tachi would reject are dropped, with a summary on screen
 
-Tachi deduplica in caso di re-import. Non ci sono `percentGraph` / `lifeGraph` (non sono nell’export MuNET); `timeAchieved` può essere sfasato di pochi minuti.
+Tachi deduplicates on re-import. No `percentGraph` / `lifeGraph` (not in the MuNET export); `timeAchieved` may be off by a few minutes.
 
-## Backup locale
+## Local backup
 
-I file `convert_munet_scores_to_tachi_batch_manual.py` e `run_convert.ps1` erano il converter da riga di comando / PowerShell; restano nel repo solo come backup. Ora si usa il [sito](https://ertydess.github.io/kt-munet-batch-manual-converter/).
+`convert_munet_scores_to_tachi_batch_manual.py` and `run_convert.ps1` were the old command-line / PowerShell converter; they remain in the repo as a backup only. Use the [site](https://ertydess.github.io/kt-munet-batch-manual-converter/) now.
