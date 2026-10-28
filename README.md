@@ -1,60 +1,25 @@
-# MuNET to Tachi BATCH-MANUAL Converter
+# MuNET → Tachi BATCH-MANUAL
 
-Converts washing machine arcade game score exports from **MuNET** (private server) into the **BATCH-MANUAL** JSON format used by [Kamaitachi] for score imports.
+Converte l’export score di **maimai DX** da **MuNET** nel JSON **BATCH-MANUAL** da importare su [Kamaitachi](https://kamaitachi.xyz).
 
-## Requirements
-
-- Python 3.10+
+**Converter online:** [https://ertydess.github.io/kt-munet-batch-manual-converter/](https://ertydess.github.io/kt-munet-batch-manual-converter/)
 
 ## Tutorial
 
-1. **Export your MuNET profile**: go to the MuNET web panel → **maimai DX** tab → **Data import / export** tab → In the Export section click either:
-   - **All Data JSON** (current / non-legacy format), or
-   - **Legacy → All Data JSON**
-   
-   Both formats are supported by this converter. A file named `MuNET Export - <username> - <date>.json` will be downloaded.
-2. **Download this repository**: click the green **Code** button on GitHub → **Download ZIP**, then extract the archive.
-3. **Place the export in the script folder**: move the `MuNET Export - ....json` file from step 1 into the same folder as `run_convert.ps1` and the Python script.
-4. **Run the converter**: right-click `run_convert.ps1` → **Run with PowerShell**. The output file `mai2_tachi_batch_manual_import_munet_<date>.json` will appear in the same folder.
-5. **Import into Kamaitachi**: go to [Kamaitachi] → **Import Scores** → **BATCH-MANUAL** (or navigate directly to `/import/batch-manual`) and upload the output file from step 4.
+1. **Esporta il profilo da MuNET** — pannello web → tab **maimai DX** → **Data import / export** → in Export scegli **All Data JSON** oppure **Legacy → All Data JSON**. Si scarica qualcosa tipo `MuNET Export - <username> - <date>.json`.
+2. **Converti sul sito** — apri il [converter](https://ertydess.github.io/kt-munet-batch-manual-converter/), trascina o seleziona il file. Il JSON convertito si scarica da solo (tutto resta nel browser).
+3. **Importa su Kamaitachi** — [Import Scores](https://kamaitachi.xyz) → **BATCH-MANUAL** (o `/import/batch-manual`) e carica il file scaricato.
 
-## Files
+## Note
 
-| File | Description |
-|------|-------------|
-| `convert_munet_scores_to_tachi_batch_manual.py` | Main converter script |
-| `run_convert.ps1` | PowerShell helper that auto-detects the MuNET export and runs the converter |
+- Percentuale = achievement MuNET ÷ 10000 (es. `990758` → `99.0758`)
+- Lamp da flag AP/FC e giudizi (AP+, AP, FC+, FC, CLEAR, FAILED)
+- `musicId` sotto 10000 → difficoltà Standard; da 10000 in su → DX; Utage saltate
+- Timestamp per canzone da `loginDate` + `userPlayDate` (con correzione dell’offset orario del server)
+- Le partite che Tachi rifiuterebbe vengono scartate, con un riepilogo a schermo
 
-## Usage
+Tachi deduplica in caso di re-import. Non ci sono `percentGraph` / `lifeGraph` (non sono nell’export MuNET); `timeAchieved` può essere sfasato di pochi minuti.
 
-**PowerShell (Windows, recommended):** place the MuNET export JSON next to the scripts, then right-click `run_convert.ps1` → **Run with PowerShell**. Output: `mai2_tachi_batch_manual_import_munet_<date>.json`.
+## Backup locale
 
-**Python:**
-
-```bash
-python convert_munet_scores_to_tachi_batch_manual.py <input.json> [output.json]
-```
-
-`output.json` defaults to `tachi_import.json`.
-
-## Conversion notes
-
-Reads `userPlaylogList` from MuNET All Data JSON (current and Legacy).
-
-- **Percent:** MuNET achievement ÷ 10000 (e.g. `990758` → `99.0758`)
-- **Lamp:** from AP/FC flags and judgements (AP+, AP, FC+, FC, CLEAR, FAILED)
-- **Difficulty:** `musicId` < 10000 → Standard; ≥ 10000 → DX; Utage (`level == 10`) skipped
-- **Judgements / optional:** aggregated pcrit–miss; `fast` / `slow` / `maxCombo` when present
-- **Timestamp:** per-song times from `loginDate` + `userPlayDate`, correcting MuNET’s hour-level server offset
-
-Plays that Tachi would reject (Utage, lamp/percent mismatches, judgement inconsistencies) are dropped with a console summary.
-
-## Output
-
-[BATCH-MANUAL](https://docs.tachi.ac/codebase/batch-manual/) JSON with `meta` (`maimaidx` / `Single` / `MuNET`) and a `scores` array. Tachi deduplicates on re-import.
-
-## Known limitations
-
-- No `percentGraph` / `lifeGraph` (not in the MuNET export)
-- Utage scores are not imported
-- `timeAchieved` may be off by a few minutes due to the offset heuristic
+I file `convert_munet_scores_to_tachi_batch_manual.py` e `run_convert.ps1` erano il converter da riga di comando / PowerShell; restano nel repo solo come backup. Ora si usa il [sito](https://ertydess.github.io/kt-munet-batch-manual-converter/).

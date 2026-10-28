@@ -1,0 +1,402 @@
+<!DOCTYPE html>
+<html lang="it">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>MuNET → Tachi BATCH-MANUAL</title>
+    <style>
+      :root {
+        color-scheme: light dark;
+        --bg: #0f1419;
+        --surface: #1a2332;
+        --border: #2d3a4f;
+        --text: #e8eef7;
+        --muted: #9aabbf;
+        --accent: #5b9fd4;
+        --accent-hover: #7ab3e0;
+        --ok: #3d9a6a;
+        --err: #d45b5b;
+        --drop-hover: #243044;
+      }
+
+      @media (prefers-color-scheme: light) {
+        :root {
+          --bg: #f4f6f9;
+          --surface: #ffffff;
+          --border: #d0d7e2;
+          --text: #1a2332;
+          --muted: #5a6a7e;
+          --accent: #2b6ea8;
+          --accent-hover: #1f5a8a;
+          --ok: #1f7a4d;
+          --err: #b83333;
+          --drop-hover: #e8eef7;
+        }
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        min-height: 100vh;
+        font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+        background: var(--bg);
+        color: var(--text);
+        line-height: 1.5;
+      }
+
+      main {
+        max-width: 40rem;
+        margin: 0 auto;
+        padding: 2rem 1.25rem 3rem;
+      }
+
+      h1 {
+        font-size: 1.5rem;
+        font-weight: 650;
+        margin: 0 0 0.35rem;
+      }
+
+      .lead {
+        color: var(--muted);
+        margin: 0 0 1.5rem;
+        font-size: 0.95rem;
+      }
+
+      .privacy {
+        font-size: 0.85rem;
+        color: var(--muted);
+        margin: 0 0 1.25rem;
+        padding: 0.65rem 0.85rem;
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        background: var(--surface);
+      }
+
+      .dropzone {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 0.75rem;
+        padding: 2.25rem 1.25rem;
+        border: 2px dashed var(--border);
+        border-radius: 12px;
+        background: var(--surface);
+        text-align: center;
+        cursor: pointer;
+        transition: border-color 0.15s, background 0.15s;
+      }
+
+      .dropzone:hover,
+      .dropzone.dragover {
+        border-color: var(--accent);
+        background: var(--drop-hover);
+      }
+
+      .dropzone p {
+        margin: 0;
+        color: var(--muted);
+        font-size: 0.95rem;
+      }
+
+      .dropzone strong {
+        color: var(--text);
+      }
+
+      .btn {
+        display: inline-block;
+        padding: 0.55rem 1.1rem;
+        border: none;
+        border-radius: 8px;
+        background: var(--accent);
+        color: #fff;
+        font: inherit;
+        font-weight: 600;
+        font-size: 0.9rem;
+        cursor: pointer;
+      }
+
+      .btn:hover {
+        background: var(--accent-hover);
+      }
+
+      .btn:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+      }
+
+      .btn-secondary {
+        background: transparent;
+        color: var(--accent);
+        border: 1px solid var(--accent);
+        margin-top: 0.75rem;
+      }
+
+      .btn-secondary:hover {
+        background: var(--drop-hover);
+      }
+
+      #fileInput {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        opacity: 0;
+        overflow: hidden;
+        clip: rect(0, 0, 0, 0);
+      }
+
+      .status {
+        margin-top: 1.25rem;
+        padding: 1rem 1.1rem;
+        border-radius: 10px;
+        border: 1px solid var(--border);
+        background: var(--surface);
+        display: none;
+      }
+
+      .status.visible {
+        display: block;
+      }
+
+      .status.error {
+        border-color: var(--err);
+        color: var(--err);
+      }
+
+      .status.ok h2 {
+        margin: 0 0 0.5rem;
+        font-size: 1.05rem;
+        color: var(--ok);
+      }
+
+      .status ul {
+        margin: 0.35rem 0 0;
+        padding-left: 1.2rem;
+        color: var(--muted);
+        font-size: 0.9rem;
+      }
+
+      .status .details {
+        margin-top: 0.75rem;
+        font-size: 0.8rem;
+        color: var(--muted);
+        max-height: 10rem;
+        overflow: auto;
+      }
+
+      .status .details code {
+        font-size: 0.78rem;
+        word-break: break-all;
+      }
+
+      footer {
+        margin-top: 2rem;
+        font-size: 0.8rem;
+        color: var(--muted);
+      }
+
+      footer a {
+        color: var(--accent);
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>MuNET → Tachi BATCH-MANUAL</h1>
+      <p class="lead">
+        Converte l’export All Data JSON di MuNET (maimai DX) nel formato
+        BATCH-MANUAL per Kamaitachi.
+      </p>
+      <p class="privacy">
+        Il file resta sul tuo computer: la conversione avviene nel browser e
+        non viene inviata da nessuna parte.
+      </p>
+
+      <input type="file" id="fileInput" accept=".json,application/json" />
+      <div
+        class="dropzone"
+        id="dropzone"
+        role="button"
+        tabindex="0"
+        aria-label="Seleziona o trascina un file JSON MuNET"
+      >
+        <p>
+          <strong>Trascina qui</strong> il file
+          <code>MuNET Export - ….json</code>
+        </p>
+        <p>oppure</p>
+        <button type="button" class="btn" id="pickBtn">Scegli file</button>
+      </div>
+
+      <div class="status" id="status" aria-live="polite"></div>
+    </main>
+
+    <script type="module">
+      import { convertMunetData } from "./convert.js";
+
+      const fileInput = document.getElementById("fileInput");
+      const dropzone = document.getElementById("dropzone");
+      const pickBtn = document.getElementById("pickBtn");
+      const statusEl = document.getElementById("status");
+
+      function showError(message) {
+        statusEl.className = "status visible error";
+        statusEl.textContent = message;
+      }
+
+      function pad2(n) {
+        return String(n).padStart(2, "0");
+      }
+
+      function outputFilename() {
+        const d = new Date();
+        const stamp = `${pad2(d.getDate())}-${pad2(d.getMonth() + 1)}-${d.getFullYear()}`;
+        return `mai2_tachi_batch_manual_import_munet_${stamp}.json`;
+      }
+
+      function downloadJson(obj, filename) {
+        const blob = new Blob([JSON.stringify(obj, null, 2)], {
+          type: "application/json;charset=utf-8",
+        });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = filename;
+        a.click();
+        URL.revokeObjectURL(url);
+      }
+
+      function showResult(result, filename) {
+        const skipped = result.skipDetails.length;
+        const lines = [
+          `Convertite ${result.scores.length} partite` +
+            (skipped ? ` (${skipped} saltate)` : ""),
+        ];
+
+        let html = `<h2>Fatto</h2><p>${lines[0]}.</p>`;
+
+        if (result.skipCategories.length) {
+          html += "<ul>";
+          for (const [cat, count] of result.skipCategories) {
+            html += `<li>saltate ×${count}: ${escapeHtml(cat)}</li>`;
+          }
+          html += "</ul>";
+        }
+
+        if (skipped) {
+          const shown = result.skipDetails.slice(0, 20);
+          html += `<div class="details"><strong>Dettagli:</strong><br />`;
+          for (const d of shown) {
+            html += `<code>${escapeHtml(d)}</code><br />`;
+          }
+          if (result.skipDetails.length > 20) {
+            html += `… e altre ${result.skipDetails.length - 20}`;
+          }
+          html += `</div>`;
+        }
+
+        html += `<button type="button" class="btn btn-secondary" id="redownload">Scarica di nuovo (${escapeHtml(filename)})</button>`;
+
+        statusEl.className = "status visible ok";
+        statusEl.innerHTML = html;
+        document.getElementById("redownload").addEventListener("click", () => {
+          downloadJson(result.batchManual, filename);
+        });
+      }
+
+      function escapeHtml(s) {
+        return String(s)
+          .replace(/&/g, "&amp;")
+          .replace(/</g, "&lt;")
+          .replace(/>/g, "&gt;")
+          .replace(/"/g, "&quot;");
+      }
+
+      async function handleFile(file) {
+        if (!file) return;
+        statusEl.className = "status visible";
+        statusEl.textContent = "Conversione in corso…";
+
+        let text;
+        try {
+          text = await file.text();
+        } catch {
+          showError("Impossibile leggere il file.");
+          return;
+        }
+
+        let data;
+        try {
+          data = JSON.parse(text);
+        } catch {
+          showError("Il file non è un JSON valido.");
+          return;
+        }
+
+        if (
+          data == null ||
+          typeof data !== "object" ||
+          !Array.isArray(data.userPlaylogList)
+        ) {
+          showError(
+            "JSON non riconosciuto: manca userPlaylogList. Usa l’export All Data JSON da MuNET."
+          );
+          return;
+        }
+
+        try {
+          const result = convertMunetData(data);
+          const filename = outputFilename();
+          downloadJson(result.batchManual, filename);
+          showResult(result, filename);
+        } catch (err) {
+          console.error(err);
+          showError("Errore durante la conversione. Controlla che il file sia un export MuNET completo.");
+        }
+      }
+
+      pickBtn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        fileInput.click();
+      });
+
+      dropzone.addEventListener("click", () => fileInput.click());
+      dropzone.addEventListener("keydown", (e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          fileInput.click();
+        }
+      });
+
+      fileInput.addEventListener("change", () => {
+        const file = fileInput.files?.[0];
+        handleFile(file);
+        fileInput.value = "";
+      });
+
+      ["dragenter", "dragover"].forEach((evt) => {
+        dropzone.addEventListener(evt, (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          dropzone.classList.add("dragover");
+        });
+      });
+
+      ["dragleave", "drop"].forEach((evt) => {
+        dropzone.addEventListener(evt, (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          dropzone.classList.remove("dragover");
+        });
+      });
+
+      dropzone.addEventListener("drop", (e) => {
+        const file = e.dataTransfer?.files?.[0];
+        if (file) handleFile(file);
+      });
+    </script>
+  </body>
+</html>
